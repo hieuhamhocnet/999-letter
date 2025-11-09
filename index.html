@@ -288,19 +288,23 @@
             document.documentElement.scrollTop = 0;
         };
 
-        // --- Tải và xử lý PDF khi trang được tải ---
+  // --- Tải và xử lý PDF khi trang được tải ---
         document.addEventListener('DOMContentLoaded', async () => {
             // Tên file PDF bạn đã tải lên
-            let pdfUrl = '_999 buc thu viet cho ban than.pdf'; 
+            const repoName = '999-letter'; // Tên repository của bạn trên GitHub
+            const fileName = '_999 buc thu viet cho ban than.pdf'; 
+            
+            // Tạo đường dẫn tuyệt đối (ví dụ: /999-letter/_999 buc...pdf)
+            // Đây là cách tin cậy nhất để tìm file trên GitHub Pages
+            let pdfUrl = `/${repoName}/${fileName}`;
             
             // Mã hóa URL để xử lý các ký tự đặc biệt như dấu cách
-            // Môi trường preview có thể không xử lý tốt tên file có dấu cách
             try {
                 pdfUrl = encodeURI(pdfUrl);
             } catch(e) {
                 console.warn("Không thể mã hóa URL PDF", e);
-                // Vẫn tiếp tục với URL gốc nếu có lỗi
-                pdfUrl = '_999 buc thu viet cho ban than.pdf';
+                // Vẫn tiếp tục với URL (có thể bị lỗi nếu tên file quá phức tạp)
+                pdfUrl = `/${repoName}/${fileName}`;
             }
             
             const rawText = await loadPdf(pdfUrl);
