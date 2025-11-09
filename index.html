@@ -142,71 +142,85 @@
         function parseTextToLetters(rawText) {
             const letters = [];
             
-            // Regex để "cắt" văn bản thành các phần, bắt đầu bằng "Bức thư viết cho chính mình số..."
-            // \s* (khoảng trắng linh hoạt), i (không phân biệt hoa thường)
-            const parts = rawText.split(/Bức thư viết cho chính mình số\s*/i);
+            // Regex để tìm header tiếng Việt (linh hoạt, chấp nhận không dấu/sai dấu nhẹ)
+            // (B[ứu]c th[ưu].*?) : Bắt đầu bằng "Bức thư" hoặc "Buc thu", và lấy mọi thứ...
+            // (?=...) : ...cho đến khi (lookahead) nó gặp Pinyin (chữ Latin) hoặc Hán tự
+            
+            // Regex này tìm "Bức thư viết cho chính mình số XXX"
+            // Nó linh hoạt với khoảng trắng (\s+) và các biến thể dấu
+            const headerRegex = /B[ứu]c\s+th[ưu]\s+vi[ếe]t\s+cho\s+ch[íi]nh\s+m[ìi]nh\s+s[ốo]\s*(\d{1,3})/gi;
 
-            if (parts.length <= 1) {
-                // Nếu không "cắt" được, báo lỗi
+            let match;
+            let lastIndex = 0;
+            let lastId = 0;
+            let lastContentStartIndex = 0;
+
+            // 1. Tìm Header đầu tiên
+            match = headerRegex.exec(rawText);
+            if (!match) {
                 console.error('Không tìm thấy mẫu thư nào trong PDF (Split failed).');
-                loadingMessage.innerText = 'Đã tải PDF nhưng không tìm thấy mẫu thư nào. (Lỗi logic 2)';
-                loadingMessage.classList.remove('hidden');
+                loadingMessage.innerText = 'Đã tải PDF nhưng không tìm thấy mẫu thư nào. (Lỗi logic 1)';
                 loadingMessage.classList.add('text-red-600');
                 loadingMessage.classList.remove('text-blue-600');
                 return [];
             }
 
-            // Bỏ qua phần tử đầu tiên (thường là mục lục/lời nói đầu)
-            for (let i = 1; i < parts.length; i++) {
-                const part = parts[i].trim();
-                
-                // Phần tử (part) bây giờ sẽ có dạng: "001 Kể từ hôm nay... ...qipǎoxiàn."
-                // HOẶC "002 Đời người luôn có... ...xìngfú."
-                
-                // 1. Lấy ID (là số ở đầu)
-                const idMatch = part.match(/^(\d{1,3})/);
-                if (!idMatch) continue; // Nếu không bắt đầu bằng số, bỏ qua
-                
-                const id = parseInt(idMatch[1]);
-                
-                // 2. Lấy phần còn lại (sau ID)
-                const restOfPart = part.substring(idMatch[0].length).trim();
-                
-                // 3. Tìm điểm kết thúc nội dung tiếng Việt.
-                // Nội dung tiếng Việt kết thúc khi gặp Pinyin (chữ Latin) hoặc Hán tự.
-                
+            lastId = parseInt(match[1]);
+            lastContentStartIndex = match.index + match[0].length; // Bắt đầu nội dung *sau* header
+
+            // 2. Lặp qua các Header còn lại
+            while ((match = headerRegex.exec(rawText)) !== null) {
+                // 3. Lấy khối nội dung đầy đủ (bao gồm tiếng Việt, Pinyin, Hán tự)
+                const fullBlock = rawText.substring(lastContentStartIndex, match.index);
+
+                // 4. Tách nội dung tiếng Việt ra khỏi Pinyin/Hán tự
                 // Regex tìm Pinyin (ví dụ: "Cóng jīntiān") hoặc Hán tự (ví dụ: "辑一")
                 // [a-zA-Zāáăà...]{3,} : Tìm 3+ ký tự Latin/Pinyin
                 // | (hoặc)
                 // [\u4e00-\u9fa5] : Tìm 1 ký tự Hán
                 // | (hoặc)
-                // Jí \d|CHƯƠNG \d : Tìm "Jí 1" hoặc "CHƯƠNG 1"
-                
-                const endMatch = restOfPart.match(/[a-zA-ZāáăàēéĕèīíĭìōóŏòūúŭùüǖǘǚǜêÇñ]{3,}\s|[\u4e00-\u9fa5]|Jí \d|CHƯƠNG \d/);
-                
-                let content = restOfPart;
-                
+                // Jí \d|CHƯƠNG \d : Tìm "Jí 1" hoặc "CHƯƠNG 1" (dấu hiệu hết chương)
+                const endMatch = fullBlock.match(/([a-zA-ZāáăàēéĕèīíĭìōóŏòūúŭùüǖǘǚǜêÇñ]{3,}\s|[\u4e00-\u9fa5]|Jí\s\d+|CHƯƠNG\s\d+)/);
+
+                let vietContent = fullBlock;
                 if (endMatch) {
                     // Cắt nội dung từ đầu cho đến khi gặp Pinyin/Hán tự
-                    content = restOfPart.substring(0, endMatch.index).trim();
+                    vietContent = fullBlock.substring(0, endMatch.index);
                 }
+
+                // 5. Dọn dẹp và thêm vào mảng
+                vietContent = vietContent.replace(/\s+/g, ' ').trim(); // Chuẩn hóa khoảng trắng
+                // Xóa số trang ở cuối (ví dụ: " ...xuất phát. 7 " -> " ...xuất phát. ")
+                vietContent = vietContent.replace(/\s\d+\s*$/, '').trim(); 
                 
-                // 4. Dọn dẹp nội dung (ví dụ: loại bỏ số trang ở cuối)
-                // Xóa mọi số đứng một mình ở cuối chuỗi
-                content = content.replace(/\s\d+\s*$/g, '').trim();
-                
-                // Đảm bảo nội dung hợp lệ (dài hơn 20 ký tự)
-                if (content.length > 20) {
-                    letters.push({
-                        id: id,
-                        content: content.replace(/\s+/g, ' ') // Chuẩn hóa các khoảng trắng thừa
-                    });
+                if (vietContent.length > 20) { // Đảm bảo là nội dung thật
+                    letters.push({ id: lastId, content: vietContent });
                 }
+
+                // 6. Cập nhật cho vòng lặp tiếp theo
+                lastId = parseInt(match[1]);
+                lastContentStartIndex = match.index + match[0].length;
             }
 
+            // 7. Thêm bức thư cuối cùng (từ header cuối đến hết file)
+            const lastFullBlock = rawText.substring(lastContentStartIndex);
+            const lastEndMatch = lastFullBlock.match(/([a-zA-ZāáăàēéĕèīíĭìōóŏòūúŭùüǖǘǚǜêÇñ]{3,}\s|[\u4e00-\u9fa5]|Jí\s\d+|CHƯƠNG\s\d+)/);
+            
+            let lastVietContent = lastFullBlock;
+            if (lastEndMatch) {
+                lastVietContent = lastFullBlock.substring(0, lastEndMatch.index);
+            }
+            lastVietContent = lastVietContent.replace(/\s+/g, ' ').trim();
+            lastVietContent = lastVietContent.replace(/\s\d+\s*$/, '').trim();
+            
+            if (lastVietContent.length > 20) {
+                letters.push({ id: lastId, content: lastVietContent });
+            }
+
+            // Kiểm tra lỗi nếu không parse được gì
             if (letters.length === 0) {
-                 console.error('Đã split() PDF nhưng không trích xuất được nội dung. (Logic 3)');
-                 loadingMessage.innerText = 'Đã tải PDF nhưng không trích xuất được nội dung. (Lỗi logic 3)';
+                 console.error('Đã tìm thấy header nhưng không trích xuất được nội dung.');
+                 loadingMessage.innerText = 'Đã tải PDF nhưng không phân tích được nội dung. (Lỗi logic 4)';
                  loadingMessage.classList.remove('hidden');
                  loadingMessage.classList.add('text-red-600');
                  loadingMessage.classList.remove('text-blue-600');
@@ -260,8 +274,7 @@
                 const card = document.createElement('div');
                 card.className = 'bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col';
                 
-                // Thay thế \n (nếu có) bằng <br> để hiển thị xuống dòng (mặc dù logic mới đã loại bỏ \n)
-                const formattedContent = letter.content.replace(/\n/g, '<br>');
+                const formattedContent = letter.content; // Đã dọn dẹp ở hàm parse
 
                 const letterContent = `
                     <h2 class="text-xl font-semibold text-blue-700 mb-3">
@@ -348,8 +361,8 @@
                 
                 renderLetters(allLetters);
 
-                if (allLetters.length === 0) {
-                    // Nếu sau khi parse vẫn không có thư nào
+                if (allLetters.length === 0 && !loadingMessage.innerText.includes('Lỗi')) {
+                    // Nếu sau khi parse vẫn không có thư nào VÀ không có lỗi tải
                     noResults.innerText = "Đã tải PDF nhưng không phân tích được nội dung. (Lỗi logic 4)";
                     noResults.classList.remove('hidden');
                 }
