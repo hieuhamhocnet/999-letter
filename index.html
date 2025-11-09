@@ -288,23 +288,22 @@
             document.documentElement.scrollTop = 0;
         };
 
-  // --- Tải và xử lý PDF khi trang được tải ---
+        // --- Tải và xử lý PDF khi trang được tải ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // Tên file PDF bạn đã tải lên
-            const repoName = '999-letter'; // Tên repository của bạn trên GitHub
+            // Tên file PDF bạn đã tải lên (ĐÃ ĐỔI TÊN)
+            // const repoName = '999-letter'; // Tên repository của bạn trên GitHub (KHÔNG CẦN NỮA)
             const fileName = '999-thu.pdf'; 
             
-            // Tạo đường dẫn tuyệt đối (ví dụ: /999-letter/_999 buc...pdf)
-            // Đây là cách tin cậy nhất để tìm file trên GitHub Pages
-            let pdfUrl = `/${repoName}/${fileName}`;
+            // SỬA LỖI: Bỏ tên repo đi, chỉ cần dùng tên file (đường dẫn tương đối)
+            // Lỗi 404 là do dòng code cũ này: let pdfUrl = `/${repoName}/${fileName}`;
+            let pdfUrl = fileName; 
             
-            // Mã hóa URL để xử lý các ký tự đặc biệt như dấu cách
+            // Mã hóa URL để xử lý các ký tự đặc biệt 
             try {
-                pdfUrl = encodeURI(pdfUrl);
+                pdfUrl = encodeURI(fileName);
             } catch(e) {
                 console.warn("Không thể mã hóa URL PDF", e);
-                // Vẫn tiếp tục với URL (có thể bị lỗi nếu tên file quá phức tạp)
-                pdfUrl = `/${repoName}/${fileName}`;
+                pdfUrl = fileName; // Dùng tên gốc nếu lỗi
             }
             
             const rawText = await loadPdf(pdfUrl);
