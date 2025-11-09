@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>999 Bức Thư Gửi Cho Chính Mình</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải thư viện PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <style>
+        /* Sử dụng font Inter cho toàn bộ trang */
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Thông báo "Đã sao chép" */
+        #toast {
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #toast.hide {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+    </style>
+    <!-- Tải font Inter từ Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-blue-600">
+                999 Bức Thư Gửi Cho Chính Mình
+            </h1>
+            <p class="text-gray-600 mt-2 md:mt-0">Trích xuất từ PDF</p>
+        </div>
+    </header>
+
+    <!-- Thanh tìm kiếm -->
+    <div class="container mx-auto p-4 md:p-8">
+        <div class="sticky top-[80px] z-5">
+            <input type="text" id="searchInput" placeholder="Tìm theo số thứ tự hoặc nội dung bức thư..."
+                   class="w-full p-4 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm transition-all duration-300 outline-none"
+            >
+        </div>
+    </div>
+
+    <!-- Lưới hiển thị các bức thư -->
+    <main class="container mx-auto px-4 md:px-8 pb-12">
+        <!-- Thông báo tải -->
+        <div id="loading-message" class="text-center text-blue-600 text-xl mt-10">
+            <p>Đang tải và trích xuất nội dung từ PDF...</p>
+            <p classs="text-sm text-gray-500">(Vui lòng đảm bảo file `_999 buc thu viet cho ban than.pdf` nằm cùng thư mục)</p>
+        </div>
+        <div id="letter-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+            <!-- Các bức thư sẽ được chèn vào đây bằng JavaScript -->
+        </div>
+        <p id="no-results" class="text-center text-gray-500 text-xl hidden mt-10">
+            Không tìm thấy bức thư nào phù hợp.
+        </p>
+    </main>
+
+    <!-- Thông báo "Đã sao chép" (ẩn mặc định) -->
+    <div id="toast"
+         class="fixed bottom-10 right-10 bg-green-600 text-white p-4 rounded-lg shadow-lg opacity-0 transform translate-y-5 hide">
+        Đã sao chép nội dung!
+    </div>
+
+    <!-- Nút Lên đầu trang -->
+    <button id="scrollTopBtn" title="Lên đầu trang"
+            class="fixed bottom-10 right-10 p-3 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 transition-opacity duration-300 opacity-0 hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19V5M5 12l7-7 7 7"/>
+        </svg>
+    </button>
+
+
+    <script>
+        // Mảng toàn cục để lưu trữ các bức thư sau khi trích xuất
+        let allLetters = [];
+
+        const grid = document.getElementById('letter-grid');
+        const searchInput = document.getElementById('searchInput');
+        const noResults = document.getElementById('no-results');
+        const toast = document.getElementById('toast');
+        const scrollTopBtn = document.getElementById('scrollTopBtn');
+        const loadingMessage = document.getElementById('loading-message');
+        let toastTimer;
+
+        // Chỉ định workerSrc cho PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+
+        // --- Hàm tải và trích xuất PDF ---
+        async function loadPdf(url) {
+            try {
+                // Sửa lỗi: Truyền trực tiếp chuỗi URL (đã được mã hóa)
+                // Phiên bản PDF.js này dường như mong đợi một chuỗi, không phải một đối tượng
+                const pdf = await pdfjsLib.getDocument(url).promise;
+                let fullText = '';
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n\n'; // Thêm ngắt trang để dễ phân tích
+                }
+                
+                return fullText;
+            } catch (error) {
+                console.error('Lỗi khi tải PDF:', error);
+                loadingMessage.innerText = 'Lỗi! Không thể tải file PDF. Vui lòng kiểm tra tên file và đảm bảo nó nằm cùng thư mục với file HTML.';
+                loadingMessage.classList.add('text-red-600');
+                loadingMessage.classList.remove('text-blue-600');
+                return null;
+            }
+        }
+
+        // --- Hàm phân tích văn bản thô thành các bức thư ---
+        function parseTextToLetters(rawText) {
+            const letters = [];
+            // Sử dụng regex để tìm "Bức thư viết cho chính mình số" theo sau là số
+            const regex = /Bức thư viết cho chính mình số (\d{1,3})/g;
+            let match;
+            let lastIndex = 0;
+
+            // Tìm lần khớp đầu tiên để bỏ qua phần giới thiệu
+            match = regex.exec(rawText);
+            if (!match) {
+                console.error('Không tìm thấy mẫu thư nào trong PDF.');
+                return [];
+            }
+            lastIndex = match.index;
+
+            let currentId = parseInt(match[1]);
+            let contentStartIndex = match.index + match[0].length;
+            
+            // Lặp qua các lần khớp còn lại
+            while ((match = regex.exec(rawText)) !== null) {
+                // Lấy nội dung giữa lần khớp trước và lần khớp này
+                const content = rawText.substring(contentStartIndex, match.index).trim();
+                letters.push({ id: currentId, content: content });
+
+                // Cập nhật cho lần lặp tiếp theo
+                currentId = parseInt(match[1]);
+                contentStartIndex = match.index + match[0].length;
+            }
+
+            // Thêm bức thư cuối cùng (từ lần khớp cuối đến hết file)
+            const lastContent = rawText.substring(contentStartIndex).trim();
+            if (lastContent) {
+                letters.push({ id: currentId, content: lastContent });
+            }
+
+            // Xử lý trường hợp đặc biệt, ví dụ như trang 195 có "999-i;J-1&"
+            // Đoạn mã trên có thể cần điều chỉnh thêm nếu cấu trúc PDF phức tạp
+            // Hiện tại, nó sẽ cố gắng trích xuất dựa trên mẫu đã thấy
+            
+            // Loại bỏ các mục trống hoặc không hợp lệ (ví dụ: mục lục)
+            return letters.filter(l => l.content.length > 50 && l.id > 0);
+        }
+
+        // --- Hàm hiển thị thông báo "Đã sao chép" ---
+        function showToast() {
+            if (toastTimer) clearTimeout(toastTimer);
+            toast.classList.add('show');
+            toast.classList.remove('hide');
+
+            toastTimer = setTimeout(() => {
+                toast.classList.add('hide');
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // --- Hàm sao chép nội dung ---
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed'; 
+            textarea.style.opacity = 0;
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast(); 
+            } catch (err) {
+                console.error('Không thể sao chép:', err);
+            }
+
+            document.body.removeChild(textarea);
+        }
+
+        // --- Hàm hiển thị danh sách các bức thư ---
+        function renderLetters(letters) {
+            grid.innerHTML = ''; // Xóa nội dung cũ
+            
+            if (letters.length === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            letters.forEach(letter => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col';
+                
+                const letterContent = `
+                    <h2 class="text-xl font-semibold text-blue-700 mb-3">
+                        Bức thư số ${letter.id.toString().padStart(3, '0')}
+                    </h2>
+                    <p class="text-gray-700 leading-relaxed mb-4 flex-grow">
+                        ${letter.content}
+                    </p>
+                    <button class="copy-btn mt-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-300 self-start" 
+                            data-id="${letter.id}">
+                        Sao chép nội dung
+                    </button>
+                `;
+                
+                card.innerHTML = letterContent;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- Xử lý sự kiện tìm kiếm ---
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            const filteredLetters = allLetters.filter(letter => {
+                const letterIdMatch = letter.id.toString().padStart(3, '0').includes(searchTerm);
+                const contentMatch = letter.content.toLowerCase().includes(searchTerm);
+                return letterIdMatch || contentMatch;
+            });
+            
+            renderLetters(filteredLetters);
+        });
+
+        // --- Xử lý sự kiện nhấp chuột (để sao chép) ---
+        grid.addEventListener('click', (e) => {
+            if (e.target.classList.contains('copy-btn')) {
+                const letterId = parseInt(e.target.getAttribute('data-id'));
+                const letterToCopy = allLetters.find(l => l.id === letterId);
+                
+                if (letterToCopy) {
+                    const textToCopy = `Bức thư số ${letterToCopy.id.toString().padStart(3, '0')}\n\n${letterToCopy.content}`;
+                    copyToClipboard(textToCopy);
+                }
+            }
+        });
+
+        // --- Xử lý nút Lên đầu trang ---
+        window.onscroll = () => {
+            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                scrollTopBtn.classList.remove('hidden');
+                scrollTopBtn.classList.add('opacity-100');
+            } else {
+                scrollTopBtn.classList.add('hidden');
+                scrollTopBtn.classList.remove('opacity-100');
+            }
+        };
+
+        scrollTopBtn.onclick = () => {
+            document.body.scrollTop = 0; 
+            document.documentElement.scrollTop = 0;
+        };
+
+        // --- Tải và xử lý PDF khi trang được tải ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Tên file PDF bạn đã tải lên
+            let pdfUrl = '_999 buc thu viet cho ban than.pdf'; 
+            
+            // Mã hóa URL để xử lý các ký tự đặc biệt như dấu cách
+            // Môi trường preview có thể không xử lý tốt tên file có dấu cách
+            try {
+                pdfUrl = encodeURI(pdfUrl);
+            } catch(e) {
+                console.warn("Không thể mã hóa URL PDF", e);
+                // Vẫn tiếp tục với URL gốc nếu có lỗi
+                pdfUrl = '_999 buc thu viet cho ban than.pdf';
+            }
+            
+            const rawText = await loadPdf(pdfUrl);
+            
+            if (rawText) {
+                allLetters = parseTextToLetters(rawText);
+                
+                // Ẩn thông báo tải và hiển thị lưới
+                loadingMessage.classList.add('hidden');
+                grid.classList.remove('hidden');
+                
+                renderLetters(allLetters);
+            }
+        });
+    </script>
+
+</body>
+</html>
