@@ -38,340 +38,157 @@
             opacity: 1;
             transform: translateY(0);
         }
-        #toast.hide {
-            opacity: 0;
-            transform: translateY(20px);
+
+        /* Nút "Lên đầu trang" */
+        #scrollTopBtn {
+            transition: opacity 0.3s, transform 0.3s;
         }
     </style>
-    <!-- Tải font Inter từ Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-50 text-gray-800">
 
     <!-- Header -->
-    <header class="bg-white shadow-md sticky top-0 z-10">
-        <div class="container mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center">
-            <h1 class="text-2xl md:text-3xl font-bold text-blue-600">
-                999 Bức Thư Gửi Cho Chính Mình
-            </h1>
-            <p class="text-gray-600 mt-2 md:mt-0">Trích xuất từ PDF</p>
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl sm:text-2xl font-bold text-blue-600">999 Bức Thư Gửi Cho Chính Mình</h1>
+            <div class="w-full max-w-md ml-4">
+                <input 
+                    type="text" 
+                    id="searchBox" 
+                    placeholder="Tìm theo số thứ tự hoặc nội dung bức thư..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
         </div>
     </header>
 
-    <!-- Thanh tìm kiếm -->
-    <div class="container mx-auto p-4 md:p-8">
-        <div class="sticky top-[80px] z-5">
-            <input type="text" id="searchInput" placeholder="Tìm theo số thứ tự hoặc nội dung bức thư..."
-                   class="w-full p-4 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm transition-all duration-300 outline-none"
-            >
-        </div>
-    </div>
-
-    <!-- Lưới hiển thị các bức thư -->
-    <main class="container mx-auto px-4 md:px-8 pb-12">
-        <!-- Thông báo tải -->
-        <div id="loading-message" class="text-center text-blue-600 text-xl mt-10">
-            <p>Đang tải và trích xuất nội dung từ PDF...</p>
-            <p classs="text-sm text-gray-500">(File: 999-thu.pdf)</p>
-        </div>
-        <div id="letter-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Vùng hiển thị các bức thư -->
+        <div id="letterGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
             <!-- Các bức thư sẽ được chèn vào đây bằng JavaScript -->
         </div>
-        <p id="no-results" class="text-center text-gray-500 text-xl hidden mt-10">
-            Không tìm thấy bức thư nào phù hợp.
-        </p>
+
+        <!-- Thông báo tải -->
+        <div id="loadingMessage" class="text-center text-gray-500 mt-12">
+            <p class="text-lg">Đang tải và trích xuất nội dung từ file PDF...</p>
+            <p class="text-sm">(Việc này có thể mất vài giây)</p>
+            <!-- Thêm một spinner đơn giản -->
+            <div class="mt-4">
+                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+        </div>
+
+        <!-- Thông báo không tìm thấy kết quả -->
+        <div id="noResults" class="text-center text-gray-500 mt-12 hidden">
+            <p class="text-lg font-medium">Không tìm thấy bức thư nào phù hợp.</p>
+        </div>
     </main>
 
-    <!-- Thông báo "Đã sao chép" (ẩn mặc định) -->
-    <div id="toast"
-         class="fixed bottom-10 right-10 bg-green-600 text-white p-4 rounded-lg shadow-lg opacity-0 transform translate-y-5 hide">
-        Đã sao chép nội dung!
+    <!-- Thông báo "Đã sao chép" (Toast) -->
+    <div id="toast" class="opacity-0 transform translate-y-10 fixed bottom-10 right-10 bg-gray-900 text-white px-5 py-3 rounded-lg shadow-xl z-50">
+        Đã sao chép vào clipboard!
     </div>
 
-    <!-- Nút Lên đầu trang -->
-    <button id="scrollTopBtn" title="Lên đầu trang"
-            class="fixed bottom-10 right-10 p-3 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 transition-opacity duration-300 opacity-0 hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 19V5M5 12l7-7 7 7"/>
+    <!-- Nút "Lên đầu trang" (Scroll to Top) -->
+    <button id="scrollTopBtn" class="opacity-0 transform translate-y-10 fixed bottom-10 left-10 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
         </svg>
     </button>
 
-
     <script>
-        // Mảng toàn cục để lưu trữ các bức thư sau khi trích xuất
-        let allLetters = [];
-
-        const grid = document.getElementById('letter-grid');
-        const searchInput = document.getElementById('searchInput');
-        const noResults = document.getElementById('no-results');
-        const toast = document.getElementById('toast');
-        const scrollTopBtn = document.getElementById('scrollTopBtn');
-        const loadingMessage = document.getElementById('loading-message');
-        let toastTimer;
-
-        // Chỉ định workerSrc cho PDF.js
+        // --- Cấu hình và Biến toàn cục ---
+        // Thiết lập workerSrc cho PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
 
-        // --- Hàm tải và trích xuất PDF ---
-        async function loadPdf(url) {
+        let allLetters = []; // Mảng chứa tất cả bức thư sau khi tải
+        const grid = document.getElementById('letterGrid');
+        const searchBox = document.getElementById('searchBox');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const noResults = document.getElementById('noResults');
+        const toast = document.getElementById('toast');
+        const scrollTopBtn = document.getElementById('scrollTopBtn');
+
+        // --- Hàm xử lý PDF ---
+
+        /**
+         * Tải file PDF và trích xuất toàn bộ văn bản.
+         * @param {string} pdfUrl - Đường dẫn đến file PDF.
+         * @returns {Promise<string|null>} - Toàn bộ nội dung văn bản hoặc null nếu lỗi.
+         */
+        async function loadPdf(pdfUrl) {
             try {
-                const pdf = await pdfjsLib.getDocument(url).promise;
+                // Tải PDF document
+                const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                const pdf = await loadingTask.promise;
+                
                 let fullText = '';
                 
+                // Lặp qua từng trang để lấy văn bản
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    // SỬA LỖI: Nối bằng \n để giữ cấu trúc
+                    
+                    // Nối các đoạn văn bản lại, giữ nguyên dấu ngắt dòng
                     const pageText = textContent.items.map(item => item.str).join('\n');
-                    fullText += pageText + '\n\n'; // SỬA LỖI: Thêm ngắt trang
+                    fullText += pageText + '\n'; // Thêm ngắt dòng giữa các trang
                 }
                 
                 return fullText;
+
             } catch (error) {
-                console.error('Lỗi khi tải PDF:', error);
-                loadingMessage.innerText = 'Lỗi! Không thể tải file PDF. Vui lòng kiểm tra tên file và đảm bảo nó nằm cùng thư mục với file HTML.';
-                loadingMessage.classList.add('text-red-600');
-                loadingMessage.classList.remove('text-blue-600');
+                console.error("Lỗi khi tải PDF:", error);
+                // Hiển thị thông báo lỗi thân thiện cho người dùng
+                loadingMessage.innerHTML = `
+                    <p class="text-lg text-red-600 font-bold">Lỗi! Không thể tải file PDF.</p>
+                    <p class="text-gray-600">Vui lòng kiểm tra lại tên file: <strong>${pdfUrl}</strong></p>
+                    <p class="text-gray-600">Và đảm bảo nó nằm cùng thư mục với file HTML khi push lên GitHub.</p>
+                `;
                 return null;
             }
         }
 
-        // --- HÀM PHÂN TÍCH VĂN BẢN (ĐÃ VIẾT LẠI) ---
-        function parseTextToLetters(rawText) {
+        /**
+         * Hàm này rất quan trọng: Nó phân tích văn bản thô từ PDF thành các đối tượng thư.
+         * @param {string} text - Văn bản thô từ PDF.
+         * @returns {Array} - Mảng các đối tượng thư.
+         */
+        function parseTextToLetters(text) {
             const letters = [];
-            
-            // Regex để tìm header tiếng Việt (linh hoạt, chấp nhận không dấu/sai dấu nhẹ)
-            // (B[ứu]c th[ưu].*?) : Bắt đầu bằng "Bức thư" hoặc "Buc thu", và lấy mọi thứ...
-            // (?=...) : ...cho đến khi (lookahead) nó gặp Pinyin (chữ Latin) hoặc Hán tự
-            
-            // Regex này tìm "Bức thư viết cho chính mình số XXX"
-            // Nó linh hoạt với khoảng trắng (\s+) và các biến thể dấu
-            const headerRegex = /B[ứu]c\s+th[ưu]\s+vi[ếe]t\s+cho\s+ch[íi]nh\s+m[ìi]nh\s+s[ốo]\s*(\d{1,3})/gi;
+            // Biểu thức chính quy (regex) để tìm tiêu đề tiếng Việt.
+            // Nó tìm "Bức thư... số" theo sau là các chữ số.
+            const headerRegex = /Bức thư viết cho chính mình số (\d+)/g;
 
-            let match;
-            let lastIndex = 0;
-            let lastId = 0;
-            let lastContentStartIndex = 0;
+            // Tách toàn bộ văn bản thành các phần dựa trên tiêu đề
+            // Dùng lookahead (?=...) để giữ lại tiêu đề trong kết quả tách
+            const parts = text.split(/(?=Bức thư viết cho chính mình số \d+)/);
 
-            // 1. Tìm Header đầu tiên
-            match = headerRegex.exec(rawText);
-            if (!match) {
-                console.error('Không tìm thấy mẫu thư nào trong PDF (Split failed).');
-                loadingMessage.innerText = 'Đã tải PDF nhưng không tìm thấy mẫu thư nào. (Lỗi logic 1)';
-                loadingMessage.classList.add('text-red-600');
-                loadingMessage.classList.remove('text-blue-600');
+            if (parts.length <= 1) {
+                console.error("Không tìm thấy mẫu thư nào trong PDF (Split failed).");
                 return [];
             }
 
-            lastId = parseInt(match[1]);
-            lastContentStartIndex = match.index + match[0].length; // Bắt đầu nội dung *sau* header
-
-            // 2. Lặp qua các Header còn lại
-            while ((match = headerRegex.exec(rawText)) !== null) {
-                // 3. Lấy khối nội dung đầy đủ (bao gồm tiếng Việt, Pinyin, Hán tự)
-                const fullBlock = rawText.substring(lastContentStartIndex, match.index);
-
-                // 4. Tách nội dung tiếng Việt ra khỏi Pinyin/Hán tự
-                // Regex tìm Pinyin (ví dụ: "Cóng jīntiān") hoặc Hán tự (ví dụ: "辑一")
-                // [a-zA-Zāáăà...]{3,} : Tìm 3+ ký tự Latin/Pinyin
-                // | (hoặc)
-                // [\u4e00-\u9fa5] : Tìm 1 ký tự Hán
-                // | (hoặc)
-                // Jí \d|CHƯƠNG \d : Tìm "Jí 1" hoặc "CHƯƠNG 1" (dấu hiệu hết chương)
-                const endMatch = fullBlock.match(/([a-zA-ZāáăàēéĕèīíĭìōóŏòūúŭùüǖǘǚǜêÇñ]{3,}\s|[\u4e00-\u9fa5]|Jí\s\d+|CHƯƠNG\s\d+)/);
-
-                let vietContent = fullBlock;
-                if (endMatch) {
-                    // Cắt nội dung từ đầu cho đến khi gặp Pinyin/Hán tự
-                    vietContent = fullBlock.substring(0, endMatch.index);
+            // Bỏ qua phần tử đầu tiên (thường là nội dung rác trước thư 001)
+            for (let i = 1; i < parts.length; i++) {
+                const chunk = parts[i];
+                
+                // Trích xuất header
+                const headerMatch = chunk.match(headerRegex);
+                if (!headerMatch) {
+                    console.warn("Bỏ qua đoạn không có header:", chunk.substring(0, 50));
+                    continue;
                 }
-
-                // 5. Dọn dẹp và thêm vào mảng
-                // SỬA LỖI: Chỉ trim(), không thay thế \s+
-                vietContent = vietContent.trim();
-                // Xóa số trang ở cuối (ví dụ: " ...xuất phát. 7 " -> " ...xuất phát. ")
-                vietContent = vietContent.replace(/\s\d+\s*$/, '').trim(); 
                 
-                if (vietContent.length > 20) { // Đảm bảo là nội dung thật
-                    letters.push({ id: lastId, content: vietContent });
-                }
-
-                // 6. Cập nhật cho vòng lặp tiếp theo
-                lastId = parseInt(match[1]);
-                lastContentStartIndex = match.index + match[0].length;
-            }
-
-            // 7. Thêm bức thư cuối cùng (từ header cuối đến hết file)
-            const lastFullBlock = rawText.substring(lastContentStartIndex);
-            const lastEndMatch = lastFullBlock.match(/([a-zA-ZāáăàēéĕèīíĭìōóŏòūúŭùüǖǘǚǜêÇñ]{3,}\s|[\u4e00-\u9fa5]|Jí\s\d+|CHƯƠNG\s\d+)/);
-            
-            let lastVietContent = lastFullBlock;
-            if (lastEndMatch) {
-                lastVietContent = lastFullBlock.substring(0, lastEndMatch.index);
-            }
-            // SỬA LỖI: Chỉ trim()
-            lastVietContent = lastVietContent.trim();
-            lastVietContent = lastVietContent.replace(/\s\d+\s*$/, '').trim();
-            
-            if (lastVietContent.length > 20) {
-                letters.push({ id: lastId, content: lastVietContent });
-            }
-
-            // Kiểm tra lỗi nếu không parse được gì
-            if (letters.length === 0) {
-                 console.error('Đã tìm thấy header nhưng không trích xuất được nội dung.');
-                 loadingMessage.innerText = 'Đã tải PDF nhưng không phân tích được nội dung. (Lỗi logic 4)';
-                 loadingMessage.classList.remove('hidden');
-                 loadingMessage.classList.add('text-red-600');
-                 loadingMessage.classList.remove('text-blue-600');
-            }
-            
-            return letters;
-        }
-
-        // --- Hàm hiển thị thông báo "Đã sao chép" ---
-        function showToast() {
-            if (toastTimer) clearTimeout(toastTimer);
-            toast.classList.add('show');
-            toast.classList.remove('hide');
-
-            toastTimer = setTimeout(() => {
-                toast.classList.add('hide');
-                toast.classList.remove('show');
-            }, 2000);
-        }
-
-        // --- Hàm sao chép nội dung ---
-        function copyToClipboard(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed'; 
-            textarea.style.opacity = 0;
-            document.body.appendChild(textarea);
-            textarea.select();
-            
-            try {
-                document.execCommand('copy');
-                showToast(); 
-            } catch (err) {
-                console.error('Không thể sao chép:', err);
-            }
-
-            document.body.removeChild(textarea);
-        }
-
-        // --- Hàm hiển thị danh sách các bức thư ---
-        function renderLetters(letters) {
-            grid.innerHTML = ''; // Xóa nội dung cũ
-            
-            if (letters.length === 0) {
-                noResults.classList.remove('hidden');
-            } else {
-                noResults.classList.add('hidden');
-            }
-
-            letters.forEach(letter => {
-                const card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col';
+                const title = headerMatch[0].trim();
                 
-                // SỬA LỖI: Chuyển \n thành <br> để hiển thị
-                const formattedContent = letter.content.replace(/\n/g, '<br>');
-
-                const letterContent = `
-                    <h2 class="text-xl font-semibold text-blue-700 mb-3">
-                        Bức thư số ${letter.id.toString().padStart(3, '0')}
-                    </h2>
-                    <p class="text-gray-700 leading-relaxed mb-4 flex-grow">
-                        ${formattedContent}
-                    </p>
-                    <button class="copy-btn mt-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-300 self-start" 
-                            data-id="${letter.id}">
-                        Sao chép nội dung
-                    </button>
-                `;
+                // Trích xuất nội dung
+                // Bắt đầu nội dung sau tiêu đề
+                let contentStartIndex = chunk.indexOf(title) + title.length;
                 
-                card.innerHTML = letterContent;
-                grid.appendChild(card);
-            });
-        }
-
-        // --- Xử lý sự kiện tìm kiếm ---
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase().trim();
-            
-            const filteredLetters = allLetters.filter(letter => {
-                const letterIdMatch = letter.id.toString().padStart(3, '0').includes(searchTerm);
-                const contentMatch = letter.content.toLowerCase().includes(searchTerm);
-                return letterIdMatch || contentMatch;
-            });
-            
-            renderLetters(filteredLetters);
-        });
-
-        // --- Xử lý sự kiện nhấp chuột (để sao chép) ---
-        grid.addEventListener('click', (e) => {
-            if (e.target.classList.contains('copy-btn')) {
-                const letterId = parseInt(e.target.getAttribute('data-id'));
-                const letterToCopy = allLetters.find(l => l.id === letterId);
-                
-                if (letterToCopy) {
-                    const textToCopy = `Bức thư số ${letterToCopy.id.toString().padStart(3, '0')}\n\n${letterToCopy.content}`;
-                    copyToClipboard(textToCopy);
-                }
-            }
-        });
-
-        // --- Xử lý nút Lên đầu trang ---
-        window.onscroll = () => {
-            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-                scrollTopBtn.classList.remove('hidden');
-                scrollTopBtn.classList.add('opacity-100');
-            } else {
-                scrollTopBtn.classList.add('hidden');
-                scrollTopBtn.classList.remove('opacity-100');
-            }
-        };
-
-        scrollTopBtn.onclick = () => {
-            document.body.scrollTop = 0; 
-            document.documentElement.scrollTop = 0;
-        };
-
-        // --- Tải và xử lý PDF khi trang được tải ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            
-            const fileName = '999-thu.pdf'; 
-            let pdfUrl = fileName; 
-            
-            try {
-                // Chỉ mã hóa nếu tên file có ký tự đặc biệt (mặc dù 999-thu.pdf là an toàn)
-                pdfUrl = encodeURI(fileName);
-            } catch(e) {
-                console.warn("Không thể mã hóa URL PDF", e);
-                pdfUrl = fileName; // Dùng tên gốc nếu lỗi
-            }
-            
-            const rawText = await loadPdf(pdfUrl);
-            
-            if (rawText) {
-                allLetters = parseTextToLetters(rawText);
-                
-                // Ẩn thông báo tải và hiển thị lưới
-                loadingMessage.classList.add('hidden');
-                grid.classList.remove('hidden');
-                
-                renderLetters(allLetters);
-
-                if (allLetters.length === 0 && !loadingMessage.innerText.includes('Lỗi')) {
-                    // Nếu sau khi parse vẫn không có thư nào VÀ không có lỗi tải
-                    noResults.innerText = "Đã tải PDF nhưng không phân tích được nội dung. (Lỗi logic 4)";
-                    noResults.classList.remove('hidden');
-                }
-            }
-        });
-    </script>
-
-</body>
-</html>
+                // Tìm vị trí kết thúc của nội dung tiếng Việt.
+                // Nội dung tiếng Việt luôn kết thúc trước Pinyin (Cóng jīntiān...) 
+                // hoặc chữ Hán (辑二...) hoặc tiêu đề tiếp theo.
